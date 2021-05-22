@@ -22,7 +22,11 @@ package moa.tasks;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.stream.Stream;
 
 import moa.capabilities.CapabilitiesHandler;
 import moa.capabilities.Capability;
@@ -190,6 +194,7 @@ public class EvaluatePrequential extends ClassificationMainTask implements Capab
         long evaluateStartTime = TimingUtils.getNanoCPUTimeOfCurrentThread();
         long lastEvaluateStartTime = evaluateStartTime;
         double RAMHours = 0.0;
+        double lastEnergyMeadurement = readEnergy();
         while (stream.hasMoreInstances()
                 && ((maxInstances < 0) || (instancesProcessed < maxInstances))
                 && ((maxSeconds < 0) || (secondsElapsed < maxSeconds))) {
@@ -217,6 +222,10 @@ public class EvaluatePrequential extends ClassificationMainTask implements Capab
                 RAMHoursIncrement *= (timeIncrement / 3600.0); //Hours
                 RAMHours += RAMHoursIncrement;
                 lastEvaluateStartTime = evaluateTime;
+                double energy = readEnergy();
+                double energyDiff = (energy - lastEnergyMeadurement)/1000000.0;
+                double power = energyDiff / Math.max(timeIncrement, 0.001);
+                lastEnergyMeadurement = energy;
                 learningCurve.insertEntry(new LearningEvaluation(
                         new Measurement[]{
                             new Measurement(
@@ -229,7 +238,13 @@ public class EvaluatePrequential extends ClassificationMainTask implements Capab
                             time),
                             new Measurement(
                             "model cost (RAM-Hours)",
-                            RAMHours)
+                            RAMHours),
+                            new Measurement(
+                                    "Energy(J)",
+                                    energyDiff),
+                            new Measurement(
+                                    "Power(W)",
+                                    power)
                         },
                         evaluator, learner));
 
@@ -271,6 +286,15 @@ public class EvaluatePrequential extends ClassificationMainTask implements Capab
             outputPredictionResultStream.close();
         }
         return learningCurve;
+    }
+
+    private double readEnergy() {
+        try (Stream<String> energy_line = Files.lines(Paths.get("/sys/class/powercap/intel-rapl:0/energy_uj"))) {
+            return Math.max(Double.parseDouble(energy_line.findFirst().get()), 0.0);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return 0.0;
     }
 
     @Override
