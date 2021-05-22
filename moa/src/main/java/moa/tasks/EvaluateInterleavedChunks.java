@@ -21,6 +21,7 @@ package moa.tasks;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.PrintStream;
 import moa.classifiers.Classifier;
 import moa.core.Example;
@@ -39,6 +40,9 @@ import moa.streams.ExampleStream;
 import moa.streams.InstanceStream;
 import com.yahoo.labs.samoa.instances.Instance;
 import com.yahoo.labs.samoa.instances.Instances;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.stream.Stream;
 
 public class EvaluateInterleavedChunks extends ClassificationMainTask {
 
@@ -164,6 +168,8 @@ public class EvaluateInterleavedChunks extends ClassificationMainTask {
 		long evaluateStartTime = TimingUtils.getNanoCPUTimeOfCurrentThread();
 		long sampleTestTime =0, sampleTrainTime = 0;
 		double RAMHours = 0.0;
+		double evaluateStartEnergy = readEnergy();
+		double lastEnergyMeadurement = evaluateStartEnergy;
 		
 		while (stream.hasMoreInstances()
 				&& ((maxInstances < 0) || (instancesProcessed < maxInstances))
@@ -229,7 +235,11 @@ public class EvaluateInterleavedChunks extends ClassificationMainTask {
 				
 				double avgTrainTime = TimingUtils.nanoTimeToSeconds(sampleTrainTime)/((double)this.sampleFrequencyOption.getValue()/chunkInstances.numInstances());
 				double avgTestTime = TimingUtils.nanoTimeToSeconds(sampleTestTime)/((double)this.sampleFrequencyOption.getValue()/chunkInstances.numInstances());
-				
+
+				double energy = readEnergy();
+				double energyDiff = (energy - lastEnergyMeadurement)/1000000.0;
+				double power = energyDiff / Math.max(sampleTrainTime + sampleTestTime, 0.001);
+
 				sampleTestTime = 0;
 				sampleTrainTime = 0;
 				
@@ -288,6 +298,15 @@ public class EvaluateInterleavedChunks extends ClassificationMainTask {
 			immediateResultStream.close();
 		}
 		return learningCurve;
+	}
+
+	private double readEnergy() {
+		try (Stream<String> energy_line = Files.lines(Paths.get("/sys/class/powercap/intel-rapl:0/energy_uj"))) {
+			return Math.max(Double.parseDouble(energy_line.findFirst().get()), 0.0);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return 0.0;
 	}
 
 }

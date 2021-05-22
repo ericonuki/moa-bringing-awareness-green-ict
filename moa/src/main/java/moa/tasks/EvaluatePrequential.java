@@ -194,7 +194,8 @@ public class EvaluatePrequential extends ClassificationMainTask implements Capab
         long evaluateStartTime = TimingUtils.getNanoCPUTimeOfCurrentThread();
         long lastEvaluateStartTime = evaluateStartTime;
         double RAMHours = 0.0;
-        double lastEnergyMeadurement = readEnergy();
+        double evaluateStartEnergy = readEnergy();
+        double lastEnergyMeadurement = evaluateStartEnergy;
         while (stream.hasMoreInstances()
                 && ((maxInstances < 0) || (instancesProcessed < maxInstances))
                 && ((maxSeconds < 0) || (secondsElapsed < maxSeconds))) {
