@@ -232,13 +232,15 @@ public class EvaluateInterleavedChunks extends ClassificationMainTask {
 				double RAMHoursIncrement = learner.measureByteSize() / (1024.0 * 1024.0 * 1024.0); //GBs
                 RAMHoursIncrement *= (TimingUtils.nanoTimeToSeconds(sampleTrainTime + sampleTestTime) / 3600.0); //Hours
                 RAMHours += RAMHoursIncrement;
-				
-				double avgTrainTime = TimingUtils.nanoTimeToSeconds(sampleTrainTime)/((double)this.sampleFrequencyOption.getValue()/chunkInstances.numInstances());
-				double avgTestTime = TimingUtils.nanoTimeToSeconds(sampleTestTime)/((double)this.sampleFrequencyOption.getValue()/chunkInstances.numInstances());
+
+				double trainTimeInS = TimingUtils.nanoTimeToSeconds(sampleTrainTime);
+				double testTimeInS = TimingUtils.nanoTimeToSeconds(sampleTestTime);
+				double avgTrainTime = trainTimeInS /((double)this.sampleFrequencyOption.getValue()/chunkInstances.numInstances());
+				double avgTestTime = testTimeInS /((double)this.sampleFrequencyOption.getValue()/chunkInstances.numInstances());
 
 				double energy = readEnergy();
 				double energyDiff = (energy - lastEnergyMeadurement)/1000000.0;
-				double power = energyDiff / Math.max(sampleTrainTime + sampleTestTime, 0.001);
+				double power = energyDiff / Math.max(trainTimeInS + testTimeInS, 0.001);
 
 				sampleTestTime = 0;
 				sampleTrainTime = 0;
@@ -251,8 +253,11 @@ public class EvaluateInterleavedChunks extends ClassificationMainTask {
 						new Measurement("average chunk train speed", chunkInstances.numInstances() / avgTrainTime),
 						new Measurement("average chunk test time", avgTestTime),
 						new Measurement("average chunk test speed", chunkInstances.numInstances()/ avgTestTime),
-						new Measurement( "model cost (RAM-Hours)", RAMHours)}, 
-					evaluator, 
+						new Measurement( "model cost (RAM-Hours)", RAMHours),
+						new Measurement( "Energy", energyDiff),
+						new Measurement( "Power", power),
+					},
+					evaluator,
 					learner));
 				
 				if (immediateResultStream != null) {
