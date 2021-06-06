@@ -241,6 +241,7 @@ public class EvaluateInterleavedChunks extends ClassificationMainTask {
 				double energy = readEnergy();
 				double energyDiff = (energy - lastEnergyMeadurement)/1000000.0;
 				double power = energyDiff / Math.max(trainTimeInS + testTimeInS, 0.001);
+				lastEnergyMeadurement = energy;
 
 				sampleTestTime = 0;
 				sampleTrainTime = 0;
